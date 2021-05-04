@@ -9,4 +9,5 @@ export const TOKEN_CONTRACT_ADDRESS =
 export const EXPLORER_URL =
   process.env.REACT_APP_EXPLORER_URL || 'https://bscscan.com';
 
-export const REQUIRED_CHAIN_ID = process.env.REQUIRED_CHAIN_ID || '0x01';
+export const REQUIRED_CHAIN_ID =
+  process.env.REACT_APP_REQUIRED_CHAIN_ID || '0x1';

@@ -32,6 +32,10 @@ function App() {
     setCurrentAccount(accounts[0]);
   });
 
+  metamask.on('chainChanged', (id) => {
+    setChainId(id);
+  });
+
   useEffect(() => {
     const provider = new ethers.providers.Web3Provider(metamask);
 
