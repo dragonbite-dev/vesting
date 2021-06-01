@@ -11,7 +11,7 @@ import { getVestingFactoryContract } from './contract';
 import { abbreviateAddress } from './utils';
 import VestingInterface from './VestingInterface';
 
-import { FACTORY_CONTRACT_ADDRESS, REQUIRED_CHAIN_ID } from './config';
+import { FACTORY_CONTRACT_ADDRESS, REQUIRED_CHAIN_ID, TOKEN_CONTRACT_ADDRESS } from './config';
 
 function App() {
   const metamask = window.ethereum;
@@ -58,8 +58,30 @@ function App() {
       setChainId(cid);
 
       setAddress(result);
+
+      // modify from here
+      const tokenAddress = TOKEN_CONTRACT_ADDRESS;
+      const tokenSymbol = 'BITE';
+      const tokenDecimals = 18;
+      const tokenImage = 'https://dragonbite.io/static/images/dragonbite-center-white-337x350.png';
+      
+      const wasAdded = await metamask.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20', // Initially only supports ERC20, but eventually more!
+          options: {
+            address: tokenAddress, // The address that the token is at.
+            symbol: tokenSymbol, // A ticker symbol or shorthand, up to 5 chars.
+            decimals: tokenDecimals, // The number of decimals in the token
+            image: tokenImage, // A string url of the token logo
+          },
+        },
+      });
+    // modify ending ---------------------
+
     };
     getAddress();
+
   }, [currentAccount, metamask]);
 
   if (!metamask) return <Center>Metamask not installed!</Center>;

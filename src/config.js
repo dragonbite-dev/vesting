@@ -1,13 +1,14 @@
 export const FACTORY_CONTRACT_ADDRESS =
   process.env.REACT_APP_FACTORY_CONTRACT_ADDRESS ||
-  '0x1E90957F16D9E9ffaD9e73b612aF5EAb7a5bAb3e';
+  '0x2Be472d6F4380Ef675B7a1e7D6f113b34D10B8a7';
 
 export const TOKEN_CONTRACT_ADDRESS =
   process.env.REACT_APP_TOKEN_CONTRACT_ADDRESS ||
-  '0x676855097117a6a32043db65c046d53b72e72b04';
+  '0x5898BB2c8E2BC175053Bd23083baad911E84afc1';
 
 export const EXPLORER_URL =
-  process.env.REACT_APP_EXPLORER_URL || 'https://bscscan.com';
+  process.env.REACT_APP_EXPLORER_URL || 'https://kovan.etherscan.io';
 
 export const REQUIRED_CHAIN_ID =
-  process.env.REACT_APP_REQUIRED_CHAIN_ID || '0x1';
+  process.env.REACT_APP_REQUIRED_CHAIN_ID || '0x2a';
+
