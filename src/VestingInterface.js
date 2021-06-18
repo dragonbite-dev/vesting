@@ -14,6 +14,8 @@ import { TOKEN_CONTRACT_ADDRESS, EXPLORER_URL } from './config';
 import {
   Box,
   Button,
+  Container,
+  Center,
   Heading,
   Progress,
   Table,
@@ -118,6 +120,17 @@ function VestingInterface({ vestingContractAddress }) {
   };
 
   return (
+    vestingState.total? 
+    (
+      <Container height="100vh">
+        <Center>
+          {`Vesting has not started yet. The vesting start date is ${moment(
+                    (vestingState.start + vestingState.duration) * 1000
+                  ).format('YYYY/MM/DD HH:mm')}. The ${vestingState.symbol} tokens will appear here soon.`}
+        </Center>
+      </Container>
+    )
+    :
     <Box>
       <Heading size="md" mb={5}>
         Vesting Details
