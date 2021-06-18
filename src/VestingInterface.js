@@ -125,7 +125,7 @@ function VestingInterface({ vestingContractAddress }) {
       <Container height="100vh">
         <Center>
           {`Vesting has not started yet. The vesting start date is ${moment(
-                    (vestingState.start + vestingState.duration) * 1000
+                    (vestingState.start) * 1000
                   ).format('YYYY/MM/DD HH:mm')}. The ${vestingState.symbol} tokens will appear here soon.`}
         </Center>
       </Container>
