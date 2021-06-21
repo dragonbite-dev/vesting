@@ -120,7 +120,7 @@ function VestingInterface({ vestingContractAddress }) {
   };
 
   return (
-    vestingState.total == 0? 
+    vestingState.total === 0? 
     (
       <Container height="100vh">
         <Center>
