@@ -132,10 +132,73 @@ function VestingInterface({ vestingContractAddress }) {
     )
     :
     <Box>
+
       <Heading size="md" mb={5}>
-        Vesting Details
+        Stake BITE and Earn Interest
       </Heading>
 
+      <Table
+        variant="simple"
+        size="md"
+      >
+        <Tbody>
+          <Tr>
+            <Td>
+            <Link
+              color="red.500" 
+              href={`https://stake.polkabridge.org/`}
+              isExternal
+            >
+              <Button
+              bgColor="green.200"
+              >
+               <strong>Stake BITE at Polkabridge</strong>
+              </Button>
+            </Link>
+            </Td>
+            <Td>
+            <Link
+              color="red.500" 
+              href={`https://dragonbite.medium.com/staking-bite-in-a-few-clicks-with-polkabridge-ensure-your-high-apy-deae1b34a80b`}
+              isExternal
+            >
+              Polkabridge Guide
+            </Link>
+            </Td>
+          </Tr>
+          <Tr>
+            <Td>
+            <Link
+              color="red.500" 
+              href={`https://app.mantradao.com/staking`}
+              isExternal
+            >
+              <Button
+              bgColor="green.200"
+              >
+              <strong>Stake BITE at Mantradao</strong>
+              </Button>
+            </Link>
+            </Td>
+            <Td>
+            <Link 
+              color="red.500"
+              href={`https://dragonbite.medium.com/earn-attractive-interests-stake-your-bite-on-mantra-dao-6be4bcd71d1d`}
+              isExternal
+            >
+              Mantradao Guide
+            </Link>
+            </Td>
+          </Tr>
+        </Tbody>
+      </Table>
+
+      <span>&nbsp;&nbsp;</span>
+      
+      <Heading size="md" mb={5}>
+        Claim Your BITE Tokens
+      </Heading>
+      
       <Box mb={5}>
         {vestingState.vested ? (
           <>
