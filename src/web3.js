@@ -1,4 +1,3 @@
-import { BscConnector } from '@binance-chain/bsc-connector';
 import { InjectedConnector } from '@web3-react/injected-connector';
 import { ethers } from 'ethers';
 
@@ -26,8 +25,6 @@ const chainId = parseInt(
 
 const injected = new InjectedConnector({ supportedChainIds: [chainId] });
 
-const bscConnector = new BscConnector({ supportedChainIds: [chainId] });
-
 export const connectorsByName = {
   injected: injected,
   bsc: bscConnector,
@@ -42,10 +39,6 @@ export const getConnectorId = (connector) => {
 
   if (connector instanceof InjectedConnector) {
     return 'injected';
-  }
-
-  if (connector instanceof BscConnector) {
-    return 'bsc';
   }
 
   return null;

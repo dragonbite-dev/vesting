@@ -5,11 +5,14 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 import { ChakraProvider } from '@chakra-ui/react';
+import { MetamaskStateProvider } from "use-metamask";
 
 ReactDOM.render(
   <React.StrictMode>
     <ChakraProvider>
-      <App />
+      <MetamaskStateProvider>
+        <App />
+      </MetamaskStateProvider>
     </ChakraProvider>
   </React.StrictMode>,
   document.getElementById('root')

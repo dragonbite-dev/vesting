@@ -4,81 +4,65 @@ import React, { useEffect, useState } from 'react';
 import moment from 'moment';
 
 import {
-  getVestingContract,
   getTokenContract,
-  encodeReleaseTokens,
 } from './contract';
 import { abbreviateAddress, formatTokenNum } from './utils';
 import { TOKEN_CONTRACT_ADDRESS, EXPLORER_URL } from './config';
+import { createPermitMessageData, getApprovalDigest } from './utils';
+import { ethers } from 'ethers';
+import { ecsign } from 'ethereumjs-util'
+
+import {
+  hexlify,
+} from 'ethers/lib/utils';
 
 import {
   Box,
   Button,
-  Container,
-  Center,
   Heading,
-  Progress,
   Table,
   Tbody,
   Td,
   Tr,
-  Text,
   Link,
+  Center,
+  NumberInput,
+  NumberInputField,
+  Text,
+  Input
 } from '@chakra-ui/react';
-import { ethers } from 'ethers';
 
-function VestingInterface({ vestingContractAddress }) {
-  const [vestingState, setVestingState] = useState({});
+function VestingInterface() {
+
+  const [amountTransfer, setAmountTransfer] = useState();
+  const [signerAddress, setSignerAddress] = useState();
+  const [spenderAddress, setSpenderAddress] = useState();
+  const [accountState, setAccountState] = useState({'balance': 0, 'symbol': 'BTIEPT', 'nonce': 0});
+  const [signedTransactionState, setSignedTransactionState] = useState({});
   const [isClaiming, setIsClaiming] = useState(false);
 
   const metamask = window.ethereum;
 
   const getData = async () => {
+    
     const provider = new ethers.providers.Web3Provider(metamask);
-
     const signer = provider.getSigner();
+    const address = await signer.getAddress();
+    setSignerAddress(address);
 
-    const vestingContract = await getVestingContract(
-      signer,
-      vestingContractAddress
-    );
-
-    const tokenContract = await getTokenContract(
-      signer,
+    const tokenContract = getTokenContract(
+      provider,
       TOKEN_CONTRACT_ADDRESS
     );
 
     const symbol = await tokenContract.symbol();
+    const balance = await tokenContract.balanceOf(address);
+    const nonce = await tokenContract.nonces(address);
 
-    const start = (await vestingContract.getStart()).toNumber();
-    const duration = (await vestingContract.getDuration()).toNumber();
-    const cliff = (await vestingContract.getCliff()).toNumber();
-
-    const released = await vestingContract.getReleased(TOKEN_CONTRACT_ADDRESS);
-
-    const balance = await tokenContract.balanceOf(vestingContractAddress);
-
-    const total = released.add(balance);
-
-    const vested = await vestingContract.getVestedAmount(
-      TOKEN_CONTRACT_ADDRESS
-    );
-
-    const remaining = total.sub(vested);
-
-    const releasable = vested.sub(released);
-
-    setVestingState({
-      start,
-      duration,
-      released,
-      vested,
+    setAccountState({
       balance,
-      releasable,
       symbol,
-      cliff,
-      total,
-      remaining,
+      nonce
     });
   };
 
@@ -88,135 +72,79 @@ function VestingInterface({ vestingContractAddress }) {
     return () => {
       clearInterval(interval);
     };
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const claimTokens = async () => {
+  const signData = async (fromAddress, typeData) => {
+    return new Promise(function (resolve, reject) {
+
+      const provider = new ethers.providers.Web3Provider(metamask);
+      const signer = provider.getSigner();
+      
+      metamask.sendAsync(
+        {
+          id: 1,
+          method: "eth_signTypedData_v3",
+          params: [fromAddress, typeData],
+          from: fromAddress,
+        },
+        function (err, result) {
+          if (err) {
+            reject(err); //TODO
+            setIsClaiming(false);
+          } else {
+            const r = result.result.slice(0, 66);
+            const s = "0x" + result.result.slice(66, 130);
+            const v = Number("0x" + result.result.slice(130, 132));
+            resolve({
+              v,
+              r,
+              s,
+            });
+          }
+        }
+      );
+    });
+  };
+
+  const signTransaction = async () => {
+    
     setIsClaiming(true);
+    const messageData = createPermitMessageData(
+      signerAddress,
+      spenderAddress,
+      accountState.nonce.toString(),
+      amountTransfer,
+      1833234440741
+    );
+    
+    const sig = await signData(signerAddress, messageData.typedData);
+    
+    setSignedTransactionState(Object.assign({}, sig, messageData.message))
 
-    try {
-      const data = encodeReleaseTokens(TOKEN_CONTRACT_ADDRESS);
+    // const deadline = 1833234440741;
+    // const approve = { owner: signerAddress, spender: spenderAddress, value: amountTransfer };
+    // const digest = await getApprovalDigest(
+    //   "Dragonbite Point",
+    //   TOKEN_CONTRACT_ADDRESS,
+    //   approve,
+    //   accountState.nonce.toString(),
+    //   deadline
+    // )
 
-      const transactionParameters = {
-        gas: '0x30D40', // customizable by user during MetaMask confirmation.
-        to: vestingContractAddress, // Required except during contract publications.
-        from: metamask.selectedAddress, // must match user's active address.
-        value: '0x00', // Only required to send ether to the recipient from the initiating external account.
-        data,
-      };
-
-      // txHash is a hex string
-      // As with any RPC call, it may throw an error
-      await metamask.request({
-        method: 'eth_sendTransaction',
-        params: [transactionParameters],
-      });
-    } catch (err) {
-      console.error(err);
-    }
+    // const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from("", 'hex'))
+    // console.log(v, hexlify(r), hexlify(s));
 
     setIsClaiming(false);
   };
 
   return (
-    vestingState.total === 0? 
-    (
-      <Container height="100vh">
-        <Center>
-          {`Vesting has not started yet. The vesting start date is ${moment(
-                    (vestingState.start) * 1000
-                  ).format('YYYY/MM/DD HH:mm')}. The ${vestingState.symbol} tokens will appear here soon.`}
-        </Center>
-      </Container>
-    )
-    :
-    <Box>
+     <Box>
 
-      <Heading size="md" mb={5}>
-        Stake BITE and Earn Interest
-      </Heading>
-
-      <Table
-        variant="simple"
-        size="md"
-      >
-        <Tbody>
-          <Tr>
-            <Td>
-            <Link
-              color="red.500" 
-              href={`https://stake.polkabridge.org/`}
-              isExternal
-            >
-              <Button
-              bgColor="green.200"
-              >
-               <strong>Stake BITE at Polkabridge</strong>
-              </Button>
-            </Link>
-            </Td>
-            <Td>
-            <Link
-              color="red.500" 
-              href={`https://dragonbite.medium.com/staking-bite-in-a-few-clicks-with-polkabridge-ensure-your-high-apy-deae1b34a80b`}
-              isExternal
-            >
-              Polkabridge Guide
-            </Link>
-            </Td>
-          </Tr>
-          <Tr>
-            <Td>
-            <Link
-              color="red.500" 
-              href={`https://app.mantradao.com/staking`}
-              isExternal
-            >
-              <Button
-              bgColor="green.200"
-              >
-              <strong>Stake BITE at Mantradao</strong>
-              </Button>
-            </Link>
-            </Td>
-            <Td>
-            <Link 
-              color="red.500"
-              href={`https://dragonbite.medium.com/earn-attractive-interests-stake-your-bite-on-mantra-dao-6be4bcd71d1d`}
-              isExternal
-            >
-              Mantradao Guide
-            </Link>
-            </Td>
-          </Tr>
-        </Tbody>
-      </Table>
-
-      <span>&nbsp;&nbsp;</span>
-      
-      <Heading size="md" mb={5}>
-        Claim Your BITE Tokens
+      <Heading size="md" mb={5} textAlign="center">
+        Test meta transaction
       </Heading>
       
-      <Box mb={5}>
-        {vestingState.vested ? (
-          <>
-            <Progress
-              value={vestingState.vested
-                .mul(100)
-                .div(vestingState.total)
-                .toNumber()}
-            />
-            <Text align="center">
-              {formatTokenNum(vestingState.vested, vestingState.symbol)} /{' '}
-              {formatTokenNum(vestingState.total, vestingState.symbol)}
-            </Text>
-          </>
-        ) : (
-          ''
-        )}
-      </Box>
       <Table
         variant="simple"
         size="md"
@@ -241,97 +169,113 @@ function VestingInterface({ vestingContractAddress }) {
           </Tr>
           <Tr>
             <Td>
-              <strong>Vesting Contract Address</strong>
+              <strong>Signed Transaction Owner</strong>
             </Td>
             <Td>
-              <Link
-                color="teal.500"
-                href={`${EXPLORER_URL}/address/${vestingContractAddress}`}
-                isExternal
-              >
-                {abbreviateAddress(vestingContractAddress)}
-              </Link>
-            </Td>
-          </Tr>
-          <Tr>
-            <Td>
-              <strong>Start date</strong>
-            </Td>
-            <Td>
-              {vestingState.start
-                ? moment(vestingState.start * 1000).format('YYYY/MM/DD HH:mm')
+              {signedTransactionState.owner
+                ? signedTransactionState.owner
                 : 'loading...'}
             </Td>
           </Tr>
 
-          {vestingState.cliff === vestingState.start ? (
-            ''
-          ) : (
-            <Tr>
-              <Td>
-                <strong>Cliff date</strong>
-              </Td>
-              <Td>
-                {vestingState.cliff
-                  ? moment(vestingState.cliff * 1000).format('YYYY/MM/DD HH:mm')
-                  : 'loading...'}
-              </Td>
-            </Tr>
-          )}
+          <Tr>
+            <Td>
+              <strong>Signed Transaction Spender</strong>
+            </Td>
+            <Td>
+              {signedTransactionState.spender
+                ? signedTransactionState.spender
+                : 'loading...'}
+            </Td>
+          </Tr>
 
           <Tr>
             <Td>
-              <strong>End date</strong>
+              <strong>Signed Transaction Value</strong>
             </Td>
             <Td>
-              {vestingState.start
-                ? moment(
-                    (vestingState.start + vestingState.duration) * 1000
-                  ).format('YYYY/MM/DD HH:mm')
+              {signedTransactionState.value ? 
+                signedTransactionState.value + " " + accountState.symbol
+                : 'loading...'
+              }
+            </Td>
+          </Tr>
+          <Tr>
+            <Td>
+              <strong>Signed Transaction Deadline</strong>
+            </Td>
+            <Td>
+              {signedTransactionState.deadline
+                ? <Box>
+                  <Text>{moment(
+                    (signedTransactionState.deadline)
+                  ).format('YYYY/MM/DD HH:mm')}</Text>
+                  <Text>{"Stamp: " + signedTransactionState.deadline}</Text>
+                  </Box>
                 : 'loading...'}
             </Td>
           </Tr>
           <Tr>
             <Td>
-              <strong>Total tokens</strong>
-            </Td>
-            <Td>{formatTokenNum(vestingState.total, vestingState.symbol)}</Td>
-          </Tr>
-          <Tr>
-            <Td>
-              <strong>Already vested</strong>
-            </Td>
-            <Td>{formatTokenNum(vestingState.vested, vestingState.symbol)}</Td>
-          </Tr>
-          <Tr>
-            <Td>
-              <strong>Remaining to vest</strong>
+              <strong>R, S, V</strong>
             </Td>
             <Td>
-              {formatTokenNum(vestingState.remaining, vestingState.symbol)}
+              {signedTransactionState.r
+                ? <Box>
+                    <Text>{"R: " + signedTransactionState.r}</Text>
+                    <Text>{"\nS: " + signedTransactionState.s}</Text>
+                    <Text>{"\n V: " + signedTransactionState.v}</Text>
+                  </Box>
+                : 'loading...'}
             </Td>
           </Tr>
           <Tr>
             <Td>
-              <strong>Already claimed</strong>
+              <strong>Available to Permit</strong>
             </Td>
             <Td>
-              {formatTokenNum(vestingState.released, vestingState.symbol)}
+              <Center>
+              {`${accountState.balance} ${accountState.symbol}`}
+              </Center>
             </Td>
           </Tr>
           <Tr>
             <Td>
-              <strong>Available to Claim</strong>
+              <strong>Amount to Permit</strong>
             </Td>
             <Td>
-              {formatTokenNum(vestingState.releasable, vestingState.symbol)}{' '}
+              <Center>
+              <NumberInput
+                value={amountTransfer}
+                onChange={(valueString)=>setAmountTransfer(valueString.replace(".", ""))}
+                defaultValue={0}>
+                  <NumberInputField />
+              </NumberInput>
+              </Center>
+              {parseInt(amountTransfer === "" ? "0" : amountTransfer, 10) > parseInt(accountState.balance, 10) ?
+              (<Text fontSize="xs" color="red.400" fontWeight="bold">Amount is greater than balance!</Text>) : <Text/>
+              }
+            </Td>
+          </Tr>
+          <Tr>
+            <Td>
+              <strong>Grant to Address</strong>
+            </Td>
+            <Td>
+              <Input value={spenderAddress} onChange={(event)=>setSpenderAddress(event.target.value)}/>
+            </Td>
+          </Tr>
+          <Tr>
+            <Td>
+            </Td>
+            <Td>
               <Button
-                onClick={claimTokens}
+                onClick={signTransaction}
                 colorScheme="green"
                 ml={5}
-                isDisabled={isClaiming}
+                isDisabled={isClaiming || parseInt(amountTransfer === "" ? "0" : amountTransfer, 10) > parseInt(accountState.balance, 10) || amountTransfer === ""}
               >
-                Claim
+                Sign Transaction
               </Button>
             </Td>
           </Tr>
